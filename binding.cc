@@ -7,6 +7,7 @@
 #include "src/crypto_hash_sha256_wrap.h"
 #include "src/crypto_hash_sha512_wrap.h"
 #include "src/crypto_stream_xor_wrap.h"
+#include "src/crypto_stream_chacha20_xor_wrap.h"
 #include "src/macros.h"
 
 using namespace node;
@@ -306,6 +307,21 @@ NAN_METHOD(crypto_stream_xor_instance) {
   info.GetReturnValue().Set(CryptoStreamXorWrap::NewInstance(CDATA(nonce), CDATA(key)));
 }
 
+NAN_METHOD(crypto_stream_chacha20_xor) {
+  ASSERT_BUFFER_SET_LENGTH(info[1], message)
+  ASSERT_BUFFER_MIN_LENGTH(info[0], ciphertext, message_length)
+  ASSERT_BUFFER_MIN_LENGTH(info[2], nonce, crypto_stream_chacha20_NONCEBYTES)
+  ASSERT_BUFFER_MIN_LENGTH(info[3], key, crypto_stream_chacha20_KEYBYTES)
+
+  CALL_SODIUM(crypto_stream_chacha20_xor(CDATA(ciphertext), CDATA(message), message_length, CDATA(nonce), CDATA(key)))
+}
+
+NAN_METHOD(crypto_stream_chacha20_xor_instance) {
+  ASSERT_BUFFER_MIN_LENGTH(info[0], nonce, crypto_stream_chacha20_NONCEBYTES)
+  ASSERT_BUFFER_MIN_LENGTH(info[1], key, crypto_stream_chacha20_KEYBYTES)
+
+  info.GetReturnValue().Set(CryptoStreamChacha20XorWrap::NewInstance(CDATA(nonce), CDATA(key)));
+}
 // crypto_auth
 
 NAN_METHOD(crypto_auth) {
@@ -401,6 +417,23 @@ NAN_METHOD(crypto_shorthash) {
   ASSERT_BUFFER_MIN_LENGTH(info[2], key, crypto_shorthash_KEYBYTES)
 
   CALL_SODIUM(crypto_shorthash(CDATA(output), CDATA(input), CLENGTH(input), CDATA(key)))
+}
+
+// crypto_kdf
+
+NAN_METHOD(crypto_kdf_keygen) {
+  ASSERT_BUFFER_MIN_LENGTH(info[0], key, crypto_kdf_KEYBYTES)
+
+  crypto_kdf_keygen(CDATA(key)); // void return value
+}
+
+NAN_METHOD(crypto_kdf_derive_from_key) {
+  ASSERT_BUFFER_MIN_LENGTH(info[0], subkey, crypto_kdf_BYTES_MIN)
+  ASSERT_UINT(info[1], subkey_id)
+  ASSERT_BUFFER_MIN_LENGTH(info[2], context, crypto_kdf_CONTEXTBYTES)
+  ASSERT_BUFFER_MIN_LENGTH(info[3], key, crypto_kdf_KEYBYTES)
+
+  CALL_SODIUM(crypto_kdf_derive_from_key(CDATA(subkey), subkey_length, subkey_id, (const char *) CDATA(context), CDATA(key)))
 }
 
 // crypto_hash_sha256
@@ -511,14 +544,22 @@ NAN_MODULE_INIT(InitAll) {
   // crypto_stream
 
   CryptoStreamXorWrap::Init();
+  CryptoStreamChacha20XorWrap::Init();
 
   EXPORT_NUMBER(crypto_stream_KEYBYTES)
   EXPORT_NUMBER(crypto_stream_NONCEBYTES)
   EXPORT_STRING(crypto_stream_PRIMITIVE)
 
+  EXPORT_NUMBER(crypto_stream_chacha20_KEYBYTES)
+  EXPORT_NUMBER(crypto_stream_chacha20_NONCEBYTES)
+
+
   EXPORT_FUNCTION(crypto_stream)
   EXPORT_FUNCTION(crypto_stream_xor)
   EXPORT_FUNCTION(crypto_stream_xor_instance)
+
+  EXPORT_FUNCTION(crypto_stream_chacha20_xor)
+  EXPORT_FUNCTION(crypto_stream_chacha20_xor_instance)
 
   // crypto_auth
 
@@ -575,6 +616,17 @@ NAN_MODULE_INIT(InitAll) {
   EXPORT_STRING(crypto_shorthash_PRIMITIVE)
 
   EXPORT_FUNCTION(crypto_shorthash)
+
+  // crypto_kdf
+
+  EXPORT_NUMBER(crypto_kdf_BYTES_MIN)
+  EXPORT_NUMBER(crypto_kdf_BYTES_MAX)
+  EXPORT_NUMBER(crypto_kdf_CONTEXTBYTES)
+  EXPORT_NUMBER(crypto_kdf_KEYBYTES)
+  EXPORT_STRING(crypto_kdf_PRIMITIVE)
+
+  EXPORT_FUNCTION(crypto_kdf_keygen)
+  EXPORT_FUNCTION(crypto_kdf_derive_from_key)
 
   // crypto_hash_256
 
